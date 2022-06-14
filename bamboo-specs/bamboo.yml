@@ -62,7 +62,7 @@ Maven Job:
         jdk: JDK 11
         goal: clean package
 
-Scan Job:
+Sonar Job:
   key: SJ
   docker:
     image: bxwill/maven
