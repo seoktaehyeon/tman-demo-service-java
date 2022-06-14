@@ -1,0 +1,101 @@
+---
+version: 2
+plan:
+  project-key: TMPL
+  key: TMPLMVN
+  name: template-maven
+
+stages:
+  - Git Stage:
+      manual: false
+      final: false
+      jobs: 
+        - Git Job
+  - Compile Stage:
+      manual: false
+      final: false
+      jobs: 
+        - Maven Job
+  - Scan Stage:
+      manual: false
+      final: false
+      jobs: 
+        - Sonar Job
+  - Build Stage:
+      manual: false
+      final: false
+      jobs: 
+        - Docker Job
+
+Git Job:
+  key: GJ
+  tasks:
+    - checkout: 
+        description: "Checkout Default Repository"
+        force-clean-build: "true"
+    - script:
+        description: "Get Working Directory"
+        interpreter: SHELL
+        scripts:
+          - |-
+            rootdir=$(basename $(dirname ${bamboo.build.working.directory}))
+            workdir=$(basename ${bamboo.build.working.directory})
+            echo "workdir=${bamboo.agentVolume}/${rootdir}/${workdir}" > env
+            echo "tempdir=${bamboo.tmp.directory}" >> env
+            echo "testdir=${bamboo.bamboo_data}/${rootdir}/${bamboo.planKey}-TJ" >> env
+    - inject-variables:
+        description: "Inject Working Env"
+        file: env
+        namespace: env
+        scope: RESULT
+
+Maven Job:
+  key: MJ
+  docker:
+    image: bxwill/maven
+    volumes:
+      /root/.m2/repository: /root/.m2/repository
+  tasks:
+    - maven: 
+        description: "mvn package"
+        executable: Maven 3
+        jdk: JDK 11
+        goal: clean package
+
+Scan Job:
+  key: SJ
+  docker:
+    image: bxwill/maven
+    volumes:
+      /root/.m2/repository: /root/.m2/repository
+  tasks:
+    - maven: 
+        description: "Sonar Scan"
+        executable: Maven 3
+        jdk: JDK 11
+        goal: sonar:sonar
+
+Docker Job:
+  key: DJ
+  docker:
+    image: bxwill/ops
+    volumes:
+      /var/run/docker.sock: /var/run/docker.sock
+  tasks:
+    - any-task: 
+        description: "docker build"
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli
+        configuration:
+          commandOption: build
+          repository: ${bamboo.shortPlanName}:${bamboo.repository.branch.name}-${bamboo.buildNumber}
+          dockerfileOption: existing
+          nocache: 'false'
+          save: 'false'
+    - any-task: 
+        description: "docker push"
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli
+        configuration:
+          commandOption: push
+          registryOption: custom
+          pushRepository: ${bamboo.shortPlanName}:${bamboo.repository.branch.name}-${bamboo.buildNumber}
+
