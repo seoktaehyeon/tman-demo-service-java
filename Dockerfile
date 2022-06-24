@@ -3,7 +3,7 @@ WORKDIR /workspace
 COPY . .
 RUN mvn clean package
 
-FROM java:17-jdk
+FROM openjdk:17-jdk
 WORKDIR /workspace
 COPY health_check.sh health_check.sh
 COPY --from=java-builder /workspace/target/svcjava-0.0.1-SNAPSHOT.jar app.jar
