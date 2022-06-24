@@ -1,0 +1,29 @@
+name: Docker Image CI
+
+on:
+  - push
+
+env:
+  IMG_REPO: bxwill
+  IMG_NAME: tman-demo-service
+  IMG_TAG: java
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Build the Docker image
+      run: |
+        echo -e "\nLogin docker registry"
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
+
+        echo -e "\nBuild and push image ${IMG_REPO}/${IMG_NAME}:${IMG_TAG}\n"
+        docker build . --file Dockerfile --tag ${IMG_REPO}/${IMG_NAME}:${IMG_TAG}
+        docker push ${IMG_REPO}/${IMG_NAME}:${IMG_TAG}
+
